@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokemon de api do prof luisao</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #eeeeee;
+            text-align: center;
+            margin: 0;
+            padding: 30px;
+        }
+        .center {
+            max-width: 600px;
+            margin: auto;
+        }
+        h1 {
+            color: #333;
+        }
+        p {
+            color: #555;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #aaa;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #555;
+        }
+        #statusMensagem {
+            margin: 20px 0;
+        }
+        .poke {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #bbb;
+        }
+        .pok {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 30px;
+        }
+        .po {
+            width: 180px;
+            height: 180px;
+            object-fit: contain;
+        }
+        #pokemonNome {
+            margin-bottom: 5px;
+        }
+        #pokemonId {
+            color: #777;
+        }
+        footer {
+            margin-top: 20px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+    <div class="center">
+    <h1>API Pokedex</h1>
+    <p>Consulte um Pokemon por nome ou seu ID (limite de 1025)</p>
+    <div>
+        <label for="inputPokemon">Buscar:</label>
+        <input type="text" id="inputPokemon" placeholder="Ex: dragonite, 150" value="dragonite">
+        <button id="btnBuscar">Buscar</button>
+    </div>
+    <div id="statusMensagem">
+        <span id="statusTexto" class="idpo">Digite um nome/ID do pokemon</span>
+    </div>
+    <div id="pokemonContainer" class="poke">
+        <div class="pok">
+            <div>
+                <img id="pokemonImg" src="" alt="Sprite do Pokemon" class="po">
+            </div>
+            <div>
+                <h2 id="pokemonNome">—</h2>
+                <span id="pokemonId">#000</span>
+            </div>
+        </div>
+        <div style="margin-top: 16px;">
+            <div><strong>Tipo/raça:</strong> <span id="pokemonTipos">—</span></div>
+            <div><strong>Habilidades:</strong> <span id="pokemonHabilidades">—</span></div>
+        </div>
+    </div>
+</div>
+    <script>
+        (function() {
+            const inputPokemon = document.getElementById('inputPokemon');
+            const btnBuscar = document.getElementById('btnBuscar');
+            const statusTexto = document.getElementById('statusTexto');
+            const statusMensagem = document.getElementById('statusMensagem');
+            const pokemonContainer = document.getElementById('pokemonContainer');
+            const pokemonImg = document.getElementById('pokemonImg');
+            const pokemonNome = document.getElementById('pokemonNome');
+            const pokemonId = document.getElementById('pokemonId');
+            const pokemonTipos = document.getElementById('pokemonTipos');
+            const pokemonHabilidades = document.getElementById('pokemonHabilidades');
+
+            function Erro(mensagem) {
+                statusMensagem.style.color = '#b00020';
+                statusTexto.textContent = 'ERRO: ' + mensagem;
+                pokemonContainer.style.display = 'none';
+            }
+
+            function exibirInfo(mensagem) {
+                statusMensagem.style.color = '#1a1a1a';
+                statusTexto.textContent = mensagem;
+            }
+
+            function exibirSucesso(mensagem) {
+                statusMensagem.style.color = '#006a1e';
+                statusTexto.textContent = mensagem;
+            }
+
+            function limparDetalhes() {
+                pokemonImg.src = '';
+                pokemonImg.alt = 'Sem imagem';
+                pokemonNome.textContent = '—';
+                pokemonId.textContent = '#000';
+                pokemonTipos.textContent = '—';
+                pokemonHabilidades.textContent = '—';
+            }
+
+            async function buscarPokemon(termo) {
+                if (!termo || termo.trim() === '') {
+                    Erro('Digite o nome ou ID de um Pokemon.');
+                    pokemonContainer.style.display = 'none';
+                    return;
+                }
+
+                const termoLimpo = termo.trim().toLowerCase();
+
+                statusMensagem.style.color = '#1a1a1a';
+                statusTexto.textContent = 'Carregando dados de "' + termoLimpo + '" ...';
+                pokemonContainer.style.display = 'none';
+
+                try {
+                    const url = 'https://pokeapi.co/api/v2/pokemon/' + termoLimpo;
+                    const resposta = await fetch(url);
+
+                    if (!resposta.ok) {
+                        if (resposta.status === 404) {
+                            Erro('"' + termoLimpo + '" nao encontrado. Verifique o nome ou ID.');
+                        } else {
+                            Erro('Erro ' + resposta.status + ' ao acessar a API.');
+                        }
+                        return;
+                    }
+
+                    const dados = await resposta.json();
+
+                    const nomeCapitalizado = dados.name.charAt(0).toUpperCase() + dados.name.slice(1);
+                    pokemonNome.textContent = nomeCapitalizado;
+
+                    const idFormatado = '#' + String(dados.id).padStart(3, '0');
+                    pokemonId.textContent = idFormatado;
+
+                    const spriteUrl = dados.sprites?.other?.['official-artwork']?.front_default 
+                                    || dados.sprites?.front_default 
+                                    || '';
+
+                    if (spriteUrl) {
+                        pokemonImg.src = spriteUrl;
+                        pokemonImg.alt = nomeCapitalizado + ' sprite';
+                    } else {
+                        pokemonImg.src = '';
+                        pokemonImg.alt = 'Sem imagem disponivel';
+                    }
+
+                    const tipos = dados.types.map(function(t) { 
+                        return t.type.name; 
+                    });
+
+                    pokemonTipos.textContent = tipos.join(', ');
+
+                    const habilidades = dados.abilities.map(function(a) { 
+                        return a.ability.name.replace(/-/g, ' '); 
+                    });
+
+                    pokemonHabilidades.textContent = habilidades.join(', ');
+
+                    pokemonContainer.style.display = 'block';
+                    exibirSucesso('Pokemon "' + nomeCapitalizado + '" carregado com sucesso!');
+
+                } catch (error) {
+                    console.error('Erro na requisicao:', error);
+                    Erro('Problema de rede ou servidor. Tente novamente.');
+                }
+            }
+
+            btnBuscar.addEventListener('click', function() {
+                const valor = inputPokemon.value;
+                buscarPokemon(valor);
+            });
+
+            inputPokemon.addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    btnBuscar.click();
+                }
+            });
+
+            window.addEventListener('DOMContentLoaded', function() {
+                const valorInicial = inputPokemon.value.trim() || 'dragonite';
+                buscarPokemon(valorInicial);
+            });
+
+            document.querySelector('label[for="inputPokemon"]')?.addEventListener('click', function() {
+                inputPokemon.focus();
+            });
+        })();
+    </script>
+</body>
+</html>
